@@ -3,6 +3,9 @@
 
 #include <string>
 #include <vector>
+#include <filesystem>
+#include <list>
+#include <deque>
 
 
 #include "encoding/encoding.h"
@@ -62,6 +65,103 @@ struct SimpleFileApi
     {
         return umba::filesys::isFileReadable( fileName );
         //return isFileReadableHelper(fileName);
+    }
+
+
+    // bool handler(const std::string& path, const std::string& fileName, bool fDirectory)
+
+    template<typename EnumHandler>
+    bool enumerateDirectoryEntries( const EnumHandler &enumHandler
+                                  , const std::string& path
+                                  , bool  bRecursive
+                                  , char  pathSep=0 // separator for paths passed to handler
+                                  ) const
+    {
+        if (!pathSep)
+        {
+            pathSep = umba::filename::getNativePathSep<char>();
+        }
+
+        std::deque<std::string> pathList;
+
+        pathList.push_back(umba::filename::stripLastPathSepCopy(umba::filename::normalizePathSeparators(path)));
+
+        namespace fs = std::filesystem;
+
+        bool bFirstPath = true;
+
+        while(!pathList.empty())
+        {
+            auto curPath = pathList.front();
+            pathList.pop_front();
+
+            auto curPathNormalizedSeps = umba::filename::normalizePathSeparators( curPath, pathSep );
+
+            fs::directory_iterator scanPathDirectoryIterator;
+            try
+            {
+                scanPathDirectoryIterator = fs::directory_iterator(curPath);
+            }
+            catch(...)
+            {
+                if (bFirstPath)
+                {
+                    return false; // Возвращаем фалсю только если стартовый путь был некорректным
+                }
+
+                continue;
+            }
+
+            bFirstPath = false;
+            //enumHandler
+
+
+            for (const auto & entry : scanPathDirectoryIterator)
+            {
+                // https://en.cppreference.com/w/cpp/filesystem/directory_entry
+    
+                if (!entry.exists())
+                    continue;
+    
+                std::string entryName = umba::filename::getFileName(entry.path().string());
+                if (entryName=="." || entryName=="..") // Пропускаем ссылки на текущий и родительский каталоги
+                {
+                    continue;
+                }
+    
+                if (entry.is_directory())
+                {
+                    if (bRecursive)
+                    {
+                        pathList.push_back(appendPath(curPath, entryName));
+                    }
+
+                    if (!enumHandler(curPathNormalizedSeps, entryName, true)) // pass directory entry to handler
+                    {
+                        return true; // Хоть и досрочно завершилось, но стартовый путь-то был нормасик
+                    }
+
+                    continue;
+                }
+    
+                //------------------------------
+                if (!entry.is_regular_file())
+                {
+                    continue; // Какая-то шляпа попалась
+                }
+    
+                //------------------------------
+                if (!enumHandler(curPathNormalizedSeps, entryName, false)) // pass file entry to handler
+                {
+                    return true; // Хоть и досрочно завершилось, но стартовый путь-то был нормасик
+                }
+                
+            } // for (const auto & entry : scanPathDirectoryIterator)
+
+        } // while(!pathList.empty())
+
+        return true;
+    
     }
 
 

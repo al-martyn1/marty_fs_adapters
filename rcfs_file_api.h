@@ -9,6 +9,7 @@
 
 #include "umba/filename.h"
 #include "marty_rcfs/rcfs.h"
+#include "marty_rcfs/rcfs_enumerate.h"
 
 
 namespace marty_fs_adapters {
@@ -23,13 +24,13 @@ struct RcfsFileApi
 
 protected:
 
-    ResourceFileSystem    *pRcfs;
+    marty_rcfs::ResourceFileSystem   *pRcfs;
 
 
 public:
 
     RcfsFileApi() = delete;
-    RcfsFileApi(ResourceFileSystem *p) : pRcfs(p) {}
+    RcfsFileApi(marty_rcfs::ResourceFileSystem *p) : pRcfs(p) {}
     RcfsFileApi(const RcfsFileApi &other) : pRcfs(other.pRcfs) {}
     RcfsFileApi(RcfsFileApi &&other) : pRcfs(std::move(other.pRcfs)) {}
 
@@ -58,7 +59,7 @@ public:
 
     std::string appendPath(const std::string &path, const std::string &nameToAppend) const
     {
-        return umba::filename::appendPath(path, nameToAppend);
+        return umba::filename::appendPath(path, nameToAppend, '/');
     }
 
     std::string readFile( const std::string &fileName ) const
@@ -98,6 +99,132 @@ public:
         marty_rcfs::AutoFileHandle fh = pRcfs;
         return fh.open(fileName);
     }
+
+    // bool handler(const std::string& path, const std::string& fileName, bool fDirectory)
+
+    template<typename EnumHandler>
+    bool enumerateDirectoryEntries( const EnumHandler &enumHandler
+                                  , const std::string& path
+                                  , bool  bRecursive
+                                  , char  pathSep=0 // separator for paths passed to handler
+                                  ) const
+    {
+        if (!pathSep)
+        {
+            pathSep = '/';
+        }
+
+        // bool EnumerateHandler(const std::string &dirPath, const marty_rcfs::FileInfo &fileInfo)
+        // struct FileInfo
+        // {
+        //     FileAttrs   attrs = FileAttrs::FileAttrsDefault;
+        //     std::string name;
+        // };
+        // enum class FileAttrs : std::uint32_t
+        // {
+        //     FileAttrsDefault        = 0,
+        //     Directory               = 1,
+        //     FlagDirectory           = 1,
+        //     DirectoryAttrsDefault   = 1
+        //  
+        // }; // enum class FileAttrs : std::uint32_t
+
+
+        auto proxyHandler = [&](const std::string &dirPath, const marty_rcfs::FileInfo &fileInfo)
+        {
+            bool isDir = (fileInfo.attrs & marty_rcfs::FileAttrs::FlagDirectory) != 0;
+
+            return enumHandler(dirPath, fileInfo.name, isDir);
+        };
+
+        return marty_rcfs::enumerateDirectoryItems( pRcfs, path, proxyHandler, bRecursive );
+
+
+#if 0
+        std::deque<std::string> pathList;
+
+        pathList.push_back(umba::filename::stripLastPathSepCopy(umba::filename::normalizePathSeparators(path)));
+
+        namespace fs = std::filesystem;
+
+        bool bFirstPath = true;
+
+        while(!pathList.empty())
+        {
+            auto curPath = pathList.front();
+            pathList.pop_front();
+
+            auto curPathNormalizedSeps = umba::filename::normalizePathSeparators( curPath, pathSep );
+
+            fs::directory_iterator scanPathDirectoryIterator;
+            try
+            {
+                scanPathDirectoryIterator = fs::directory_iterator(curPath);
+            }
+            catch(...)
+            {
+                if (bFirstPath)
+                {
+                    return false; // Возвращаем фалсю только если стартовый путь был некорректным
+                }
+
+                continue;
+            }
+
+            bFirstPath = false;
+            //enumHandler
+
+
+            for (const auto & entry : scanPathDirectoryIterator)
+            {
+                // https://en.cppreference.com/w/cpp/filesystem/directory_entry
+    
+                if (!entry.exists())
+                    continue;
+    
+                std::string entryName = umba::filename::getFileName(entry.path().string());
+                if (entryName=="." || entryName=="..") // Пропускаем ссылки на текущий и родительский каталоги
+                {
+                    continue;
+                }
+    
+                if (entry.is_directory())
+                {
+                    if (bRecursive)
+                    {
+                        pathList.push_back(appendPath(curPath, entryName));
+                    }
+
+                    if (!enumHandler(curPathNormalizedSeps, entryName, true)) // pass directory entry to handler
+                    {
+                        return true; // Хоть и досрочно завершилось, но стартовый путь-то был нормасик
+                    }
+
+                    continue;
+                }
+    
+                //------------------------------
+                if (!entry.is_regular_file())
+                {
+                    continue; // Какая-то шляпа попалась
+                }
+    
+                //------------------------------
+                if (!enumHandler(curPathNormalizedSeps, entryName, false)) // pass file entry to handler
+                {
+                    return true; // Хоть и досрочно завершилось, но стартовый путь-то был нормасик
+                }
+                
+            } // for (const auto & entry : scanPathDirectoryIterator)
+
+        } // while(!pathList.empty())
+
+        return true;
+#endif
+
+    
+    }
+
 
 
 }; // struct RcfsFileApi
