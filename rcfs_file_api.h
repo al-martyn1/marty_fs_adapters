@@ -22,6 +22,10 @@ template<typename StringType>
 struct RcfsFileApi
 {
 
+public:
+
+    typedef StringType  string_type_t;
+
 protected:
 
     marty_rcfs::ResourceFileSystem   *pRcfs;
@@ -54,12 +58,17 @@ public:
 
     std::string getFileName(const std::string &fileName) const
     {
-        return umba::::filename::getFileName(fileName);
+        return umba::filename::getFileName(fileName);
+    }
+
+    char getPathSep() const
+    {
+        return '/';
     }
 
     std::string appendPath(const std::string &path, const std::string &nameToAppend) const
     {
-        return umba::filename::appendPath(path, nameToAppend, '/');
+        return umba::filename::appendPath(path, nameToAppend, getPathSep());
     }
 
     std::string readFile( const std::string &fileName ) const

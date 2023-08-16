@@ -23,6 +23,14 @@ namespace marty_fs_adapters {
 template<typename StringType>
 struct SimpleFileApi
 {
+
+public:
+
+    typedef StringType  string_type_t;
+
+
+public:
+
     std::string getFilePath(const std::string &fileName) const
     {
         return umba::filename::getPath(fileName);
@@ -30,12 +38,17 @@ struct SimpleFileApi
 
     std::string getFileName(const std::string &fileName) const
     {
-        return umba::::filename::getFileName(fileName);
+        return umba::filename::getFileName(fileName);
+    }
+
+    char getPathSep() const
+    {
+        return umba::filename::getNativePathSep<char>();
     }
 
     std::string appendPath(const std::string &path, const std::string &nameToAppend) const
     {
-        return umba::filename::appendPath(path, nameToAppend);
+        return umba::filename::appendPath(path, nameToAppend, getPathSep());
     }
 
     std::string readFile( const std::string &fileName ) const
