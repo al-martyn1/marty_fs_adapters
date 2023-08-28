@@ -74,6 +74,16 @@ public:
         return pApi->convert( fileText, cpId, encoding::EncodingsApi::cpid_UTF8 );
     }
 
+    bool writeFile( const std::string &fileName, const std::string &data ) const
+    {
+        return umba::filesys::writeFile( fileName, data, true /* bOverwrite */ );
+    }
+
+    bool deleteFile( const std::string &fileName ) const
+    {
+        return umba::filesys::deleteFile( fileName );
+    }
+
     bool isExistAndReadable(const std::string &fileName) const
     {
         return umba::filesys::isFileReadable( fileName );

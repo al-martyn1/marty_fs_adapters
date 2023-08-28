@@ -103,6 +103,16 @@ public:
         return pApi->convert( fileText, cpId, encoding::EncodingsApi::cpid_UTF8 );
     }
 
+    bool writeFile( const std::string &fileName, const std::string &data ) const
+    {
+        throw std::runtime_error("Not implemented: writeFile not implemented for marty_fs_adapters::RcfsFileApi");
+    }
+
+    bool deleteFile( const std::string &fileName ) const
+    {
+        throw std::runtime_error("Not implemented: deleteFile not implemented for marty_fs_adapters::RcfsFileApi");
+    }
+
     bool isExistAndReadable(const std::string &fileName) const
     {
         marty_rcfs::AutoFileHandle fh = pRcfs;
