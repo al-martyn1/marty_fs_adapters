@@ -79,6 +79,17 @@ public:
         return umba::filesys::writeFile( fileName, data, true /* bOverwrite */ );
     }
 
+    std::vector<std::uint8_t> readFileBinary( const std::string &fileName ) const
+    {
+        std::vector<std::uint8_t> resData;
+        if (!umba::filesys::readFile(fileName, resData))
+        {
+            return resData;
+        }
+
+        return resData;
+    }
+
     bool deleteFile( const std::string &fileName ) const
     {
         return umba::filesys::deleteFile( fileName );
